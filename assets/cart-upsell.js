@@ -156,16 +156,29 @@ class CartUpsell extends HTMLElement {
 
   async refreshCartItems() {
     try {
-      const response = await fetch(`${window.location.pathname}?section_id=cart-drawer`);
-      if (!response.ok) return;
+      const [drawerResponse, bubbleResponse] = await Promise.all([
+        fetch(`${window.location.pathname}?section_id=cart-drawer`),
+        fetch(`${window.location.pathname}?section_id=cart-icon-bubble`),
+      ]);
 
-      const html = await response.text();
-      const doc = new DOMParser().parseFromString(html, "text/html");
+      if (drawerResponse.ok) {
+        const html = await drawerResponse.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const newItems = doc.querySelector("cart-drawer-items");
+        const currentItems = document.querySelector("cart-drawer-items");
+        if (currentItems && newItems) {
+          currentItems.innerHTML = newItems.innerHTML;
+        }
+      }
 
-      const newItems = doc.querySelector("cart-drawer-items");
-      const currentItems = document.querySelector("cart-drawer-items");
-      if (currentItems && newItems) {
-        currentItems.innerHTML = newItems.innerHTML;
+      if (bubbleResponse.ok) {
+        const html = await bubbleResponse.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const newBubble = doc.querySelector(".shopify-section");
+        const currentBubble = document.querySelector("#cart-icon-bubble");
+        if (currentBubble && newBubble) {
+          currentBubble.innerHTML = newBubble.innerHTML;
+        }
       }
     } catch {
       // Non-critical: recommendations reload will still proceed
