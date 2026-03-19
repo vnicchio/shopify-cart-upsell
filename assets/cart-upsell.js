@@ -1,27 +1,3 @@
-/**
- * CartUpsell — Custom Element
- *
- * Renders dynamic product recommendations inside the cart, based on the first
- * product in the cart, using the Shopify Recommendations API exclusively.
- *
- * Approach:
- *  - Fetches cart state via /cart.js on connection and whenever the cart changes.
- *  - Detects cart mutations using PerformanceObserver (resource entries for
- *    /cart/add, /cart/change, /cart/update, /cart/clear) with debounce.
- *  - Filters out products already in the cart before rendering.
- *  - Renders cards from a Liquid-provided <template> element, with a built-in
- *    JS fallback if the template is absent.
- *
- * Usage (Liquid):
- *   {% render 'cart-upsell', title: 'You may also like', recommendations: 4 %}
- *
- * Attributes:
- *   recommendations   {number}  Number of cards to display (default: 4)
- *   data-add-to-cart  {string}  "Add to cart" button label
- *   data-added        {string}  Label shown after adding to cart
- *   data-empty        {string}  Message when no recommendations are available
- *   data-error        {string}  Message shown on fetch failure
- */
 class CartUpsell extends HTMLElement {
   constructor() {
     super();
@@ -56,11 +32,6 @@ class CartUpsell extends HTMLElement {
     clearTimeout(this._observerTimeout);
   }
 
-  /**
-   * Sets up a PerformanceObserver to detect any cart AJAX request and
-   * trigger a debounced reload of recommendations.
-   * Handles the case where the page load event has already fired.
-   */
   setupCartObserver() {
     if (!("PerformanceObserver" in window)) return;
 
@@ -88,10 +59,6 @@ class CartUpsell extends HTMLElement {
     }
   }
 
-  /**
-   * Renders skeleton placeholder cards while recommendations are loading.
-   * Mirrors the exact grid structure of the real cards to avoid layout shift.
-   */
   renderLoading() {
     this.innerHTML = `
       <div class="cart-upsell-loading" role="status" aria-label="${this.getAttribute("data-loading") || "Loading"}">
@@ -100,10 +67,6 @@ class CartUpsell extends HTMLElement {
     `;
   }
 
-  /**
-   * Fetches the current cart, then loads and renders recommendations.
-   * Renders an empty or error state as appropriate.
-   */
   async loadCart() {
     this.renderLoading();
     try {
@@ -128,11 +91,6 @@ class CartUpsell extends HTMLElement {
     }
   }
 
-  /**
-   * Fetches product recommendations for the first cart item and filters out
-   * products already present in the cart.
-   * Requests extra items from the API to ensure enough results after filtering.
-   */
   async loadRecommendations() {
     const firstProduct = this.cartProducts[0];
     const fetchLimit = this.recommendations + this.cartProducts.length;
@@ -167,13 +125,6 @@ class CartUpsell extends HTMLElement {
     });
   }
 
-  /**
-   * Adds a product variant to the cart via AJAX.
-   * Cancels any pending observer-triggered reload to avoid a double re-render.
-   * On success, refreshes the cart drawer items and reloads recommendations.
-   *
-   * @param {HTMLButtonElement} button
-   */
   async addToCart(button) {
     const variantId = button.dataset.variantId;
     if (!variantId) return;
@@ -191,7 +142,6 @@ class CartUpsell extends HTMLElement {
         body: JSON.stringify({ id: variantId, quantity: 1 }),
       });
 
-      // Clear any observer timeout set while the fetch was in flight
       clearTimeout(this._observerTimeout);
 
       if (!response.ok) throw new Error(`Add to cart failed: ${response.status}`);
@@ -204,11 +154,6 @@ class CartUpsell extends HTMLElement {
     }
   }
 
-  /**
-   * Refreshes the cart drawer items list without triggering the drawer
-   * open/close animation.
-   * No-op if the cart-drawer-items element is not present on the page.
-   */
   async refreshCartItems() {
     try {
       const response = await fetch(`${window.location.pathname}?section_id=cart-drawer`);
@@ -227,13 +172,6 @@ class CartUpsell extends HTMLElement {
     }
   }
 
-  /**
-   * Resolves the best available image URL from a product object.
-   * Handles protocol-relative URLs.
-   *
-   * @param {Object} product
-   * @returns {string|null}
-   */
   getProductImageUrl(product) {
     const img =
       product.featured_image ||
@@ -251,14 +189,6 @@ class CartUpsell extends HTMLElement {
     return url;
   }
 
-  /**
-   * Builds the HTML string for a single recommendation card.
-   * Uses the Liquid-provided <template> element if available, falls back to
-   * inline HTML otherwise.
-   *
-   * @param {Object} product
-   * @returns {string}
-   */
   renderRecommendation(product) {
     const imageUrl = this.getProductImageUrl(product);
     const currency = window.Shopify?.currency?.active ?? "USD";
@@ -308,12 +238,6 @@ class CartUpsell extends HTMLElement {
     `;
   }
 
-  /**
-   * Safely escapes a string for HTML output.
-   *
-   * @param {*} text
-   * @returns {string}
-   */
   escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text ?? "";

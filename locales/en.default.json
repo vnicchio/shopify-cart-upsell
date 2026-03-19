@@ -302,7 +302,8 @@
       "upsell_title": "You may also like",
       "upsell_empty": "No recommendations available",
       "upsell_error": "Error loading recommendations",
-      "upsell_added": "Added!"
+      "upsell_added": "Added!",
+      "upsell_loading": "Loading recommendations"
     },
     "footer": {
       "payment": "Payment methods"
