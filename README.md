@@ -1,160 +1,154 @@
-<h1 align="center" style="position: relative;">
-  <br>
-    <img src="./assets/shoppy-x-ray.svg" alt="logo" width="200">
-  <br>
-  Shopify Skeleton Theme
-</h1>
+# Cart Upsell — Shopify Theme Component
 
-A minimal, carefully structured Shopify theme designed to help you quickly get started. Designed with modularity, maintainability, and Shopify's best practices in mind.
+A lightweight, zero-dependency cart upsell component for Shopify themes. Displays product recommendations inside the cart drawer or cart page based on what the customer already has in the bag — and lets them add suggested items with a single click, without any page reload.
 
-<p align="center">
-  <a href="./LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
-  <a href="./actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Shopify/skeleton-theme/actions/workflows/ci.yml/badge.svg"></a>
-</p>
+---
 
-## Getting started
+## How it works
 
-### Prerequisites
+1. When the component mounts, it fetches the current cart via `/cart.js`.
+2. Using the first product in the cart, it requests recommendations from Shopify's native `/recommendations/products.json` endpoint.
+3. Products already in the cart are filtered out automatically.
+4. The remaining products are rendered using a `<template>` tag defined in Liquid, so the markup is fully customisable.
+5. A `PerformanceObserver` watches for requests to `/cart/add`, `/cart/change`, `/cart/update`, and `/cart/clear` — whenever a cart update is detected, the recommendations reload automatically.
 
-Before starting, ensure you have the latest Shopify CLI installed:
+---
 
-- [Shopify CLI](https://shopify.dev/docs/api/shopify-cli) – helps you download, upload, preview themes, and streamline your workflows
+## File structure
 
-If you use VS Code:
+```
+assets/
+  cart-upsell.css          # Component styles (fully overridable via CSS variables)
+  cart-upsell.js           # CartUpsell custom element
 
-- [Shopify Liquid VS Code Extension](https://shopify.dev/docs/storefronts/themes/tools/shopify-liquid-vscode) – provides syntax highlighting, linting, inline documentation, and auto-completion specifically designed for Liquid templates
+sections/
+  cart-upsell.liquid       # Section wrapper (adds the component to the theme editor)
 
-### Clone
-
-Clone this repository using Git or Shopify CLI:
-
-```bash
-git clone git@github.com:Shopify/skeleton-theme.git
-# or
-shopify theme init
+snippets/
+  cart-upsell.liquid       # Snippet that renders the web component and loads assets
+  cart-upsell-item-template.liquid  # Template for each recommendation card
 ```
 
-### Preview
+---
 
-Preview this theme using Shopify CLI:
+## Installation
 
-```bash
-shopify theme dev
-```
+### 1. Add the files
 
-## Theme architecture
+Copy the following files into your theme:
 
-```bash
-.
-├── assets          # Stores static assets (CSS, JS, images, fonts, etc.)
-├── blocks          # Reusable, nestable, customizable UI components
-├── config          # Global theme settings and customization options
-├── layout          # Top-level wrappers for pages (layout templates)
-├── locales         # Translation files for theme internationalization
-├── sections        # Modular full-width page components
-├── snippets        # Reusable Liquid code or HTML fragments
-└── templates       # Templates combining sections to define page structures
-```
+| Source file | Destination |
+|---|---|
+| `assets/cart-upsell.css` | `assets/` |
+| `assets/cart-upsell.js` | `assets/` |
+| `sections/cart-upsell.liquid` | `sections/` |
+| `snippets/cart-upsell.liquid` | `snippets/` |
+| `snippets/cart-upsell-item-template.liquid` | `snippets/` |
 
-To learn more, refer to the [theme architecture documentation](https://shopify.dev/docs/storefronts/themes/architecture).
+### 2. Add translation keys
 
-### Templates
+Add the following keys to your `locales/en.default.json` (and other locale files as needed):
 
-[Templates](https://shopify.dev/docs/storefronts/themes/architecture/templates#template-types) control what's rendered on each type of page in a theme.
-
-The Skeleton Theme scaffolds [JSON templates](https://shopify.dev/docs/storefronts/themes/architecture/templates/json-templates) to make it easy for merchants to customize their store.
-
-None of the template types are required, and not all of them are included in the Skeleton Theme. Refer to the [template types reference](https://shopify.dev/docs/storefronts/themes/architecture/templates#template-types) for a full list.
-
-### Sections
-
-[Sections](https://shopify.dev/docs/storefronts/themes/architecture/sections) are Liquid files that allow you to create reusable modules of content that can be customized by merchants. They can also include blocks which allow merchants to add, remove, and reorder content within a section.
-
-Sections are made customizable by including a `{% schema %}` in the body. For more information, refer to the [section schema documentation](https://shopify.dev/docs/storefronts/themes/architecture/sections/section-schema).
-
-### Blocks
-
-[Blocks](https://shopify.dev/docs/storefronts/themes/architecture/blocks) let developers create flexible layouts by breaking down sections into smaller, reusable pieces of Liquid. Each block has its own set of settings, and can be added, removed, and reordered within a section.
-
-Blocks are made customizable by including a `{% schema %}` in the body. For more information, refer to the [block schema documentation](https://shopify.dev/docs/storefronts/themes/architecture/blocks/theme-blocks/schema).
-
-## Schemas
-
-When developing components defined by schema settings, we recommend these guidelines to simplify your code:
-
-- **Single property settings**: For settings that correspond to a single CSS property, use CSS variables:
-
-  ```liquid
-  <div class="collection" style="--gap: {{ block.settings.gap }}px">
-    ...
-  </div>
-
-  {% stylesheet %}
-    .collection {
-      gap: var(--gap);
+```json
+{
+  "sections": {
+    "cart": {
+      "upsell_title": "You may also like",
+      "upsell_added": "Added!",
+      "upsell_empty": "No recommendations available",
+      "upsell_error": "Error loading recommendations"
     }
-  {% endstylesheet %}
-
-  {% schema %}
-  {
-    "settings": [{
-      "type": "range",
-      "label": "gap",
-      "id": "gap",
-      "min": 0,
-      "max": 100,
-      "unit": "px",
-      "default": 0,
-    }]
   }
-  {% endschema %}
-  ```
+}
+```
 
-- **Multiple property settings**: For settings that control multiple CSS properties, use CSS classes:
+### 3. Render inside the cart drawer
 
-  ```liquid
-  <div class="collection {{ block.settings.layout }}">
-    ...
-  </div>
+Open your cart drawer snippet (e.g. `snippets/cart-drawer.liquid`) and add the snippet render where you want the upsell to appear — typically just above the cart footer:
 
-  {% stylesheet %}
-    .collection--full-width {
-      /* multiple styles */
-    }
-    .collection--narrow {
-      /* multiple styles */
-    }
-  {% endstylesheet %}
+```liquid
+{%- render 'cart-upsell' -%}
+```
 
-  {% schema %}
-  {
-    "settings": [{
-      "type": "select",
-      "id": "layout",
-      "label": "layout",
-      "values": [
-        { "value": "collection--full-width", "label": "t:options.full" },
-        { "value": "collection--narrow", "label": "t:options.narrow" }
-      ]
-    }]
-  }
-  {% endschema %}
-  ```
+You can also pass optional parameters:
 
-## CSS & JavaScript
+```liquid
+{%- render 'cart-upsell',
+  title: 'Complete your look',
+  recommendations: 3
+-%}
+```
 
-For CSS and JavaScript, we recommend using the [`{% stylesheet %}`](https://shopify.dev/docs/api/liquid/tags#stylesheet) and [`{% javascript %}`](https://shopify.dev/docs/api/liquid/tags/javascript) tags. They can be included multiple times, but the code will only appear once.
+### 4. (Optional) Add as a theme editor section
 
-### `critical.css`
+The `sections/cart-upsell.liquid` file registers the component as a configurable section in the Shopify theme editor. Merchants can then add it to any template (e.g. the cart page) and set the title and number of recommendations directly from the editor.
 
-The Skeleton Theme explicitly separates essential CSS necessary for every page into a dedicated `critical.css` file.
+---
 
-## Contributing
+## Snippet parameters
 
-We're excited for your contributions to the Skeleton Theme! This repository aims to remain as lean, lightweight, and fundamental as possible, and we kindly ask your contributions to align with this intention.
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `title` | `string` | `"You may also like"` | Heading shown above the recommendations |
+| `recommendations` | `number` | `4` | Maximum number of products to display |
 
-Visit our [CONTRIBUTING.md](./CONTRIBUTING.md) for a detailed overview of our process, guidelines, and recommendations.
+---
 
-## License
+## Section schema settings
 
-Skeleton Theme is open-sourced under the [MIT](./LICENSE.md) License.
+When used as a section via the theme editor, merchants can configure:
+
+| Setting | Type | Default |
+|---|---|---|
+| Title | Text | `"You may also like"` |
+| Number of recommendations | Range (1–12) | `4` |
+
+---
+
+## Customisation
+
+### CSS variables
+
+All colours are controlled via CSS custom properties defined on `.cart-upsell-section`. Override them anywhere in your theme CSS:
+
+```css
+.cart-upsell-section {
+  --cart-upsell-bg: #f5f5f5;
+  --cart-upsell-border: #e8e8e8;
+  --cart-upsell-card-bg: #ffffff;
+  --cart-upsell-price-color: #333333;
+  --cart-upsell-btn-bg: #000000;
+  --cart-upsell-btn-color: #ffffff;
+  --cart-upsell-btn-hover-bg: #333333;
+}
+```
+
+### Card template
+
+Each recommendation card is rendered using the `<template id="cart-upsell-item-template">` element defined in `snippets/cart-upsell.liquid`. The template uses placeholder tokens that the JavaScript replaces at runtime:
+
+| Token | Replaced with |
+|---|---|
+| `[[productUrl]]` | Product page URL |
+| `[[productImageHtml]]` | `<img>` tag (or placeholder SVG if no image) |
+| `[[productTitle]]` | Product title |
+| `[[productPriceHtml]]` | `<p>` with formatted price |
+| `[[variantId]]` | First available variant ID |
+| `[[disabled]]` | `disabled` attribute if the product is unavailable |
+
+Edit `snippets/cart-upsell-item-template.liquid` freely to match your theme's design.
+
+---
+
+## Accessibility
+
+- The loading spinner uses `role="status"` and `aria-label`.
+- Buttons that are disabled (sold-out products) use the native `disabled` attribute.
+- Product images include descriptive `alt` text from the product title.
+- Images use `loading="lazy"` and explicit `width`/`height` attributes to prevent layout shift.
+
+---
+
+## Browser support
+
+Uses the [Custom Elements v1](https://caniuse.com/custom-elementsv1) API and `PerformanceObserver`, both supported in all modern browsers. No polyfills or build tools required.
