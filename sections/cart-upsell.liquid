@@ -1,0 +1,32 @@
+{%- render 'cart-upsell',
+  title: section.settings.title,
+  recommendations: section.settings.recommendations
+-%}
+
+{% schema %}
+{
+  "name": "Cart Upsell",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title",
+      "default": "You may also like"
+    },
+    {
+      "type": "range",
+      "id": "recommendations",
+      "label": "Number of recommendations",
+      "min": 1,
+      "max": 12,
+      "step": 1,
+      "default": 4
+    }
+  ],
+  "presets": [
+    {
+      "name": "Cart Upsell"
+    }
+  ]
+}
+{% endschema %}

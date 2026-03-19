@@ -1,0 +1,21 @@
+{%- liquid
+  if title == blank
+    assign display_title = 'sections.cart.upsell_title' | t
+  else
+    assign display_title = title
+  endif
+  assign recommendations = recommendations | default: 4
+-%}
+<link rel="stylesheet" href="{{ 'cart-upsell.css' | asset_url }}">
+<script src="{{ 'cart-upsell.js' | asset_url }}" defer></script>
+
+<section class="cart-upsell-section">
+  <h2 class="cart-upsell-title">{{ display_title }}</h2>
+  <cart-upsell
+    recommendations="{{ recommendations }}"
+    data-add-to-cart="{{ 'products.product.add_to_cart' | t }}"
+    data-added="{{ 'sections.cart.upsell_added' | t }}"
+    data-empty="{{ 'sections.cart.upsell_empty' | t }}"
+    data-error="{{ 'sections.cart.upsell_error' | t }}"
+  ></cart-upsell>
+</section>

@@ -298,7 +298,11 @@
       "login": {
         "title": "Have an account?",
         "paragraph_html": "<a href=\"{{ link }}\" class=\"link underlined-link\">Log in</a> to check out faster."
-      }
+      },
+      "upsell_title": "You may also like",
+      "upsell_empty": "No recommendations available",
+      "upsell_error": "Error loading recommendations",
+      "upsell_added": "Added!"
     },
     "footer": {
       "payment": "Payment methods"
