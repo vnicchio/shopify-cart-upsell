@@ -1,0 +1,30 @@
+{% doc %}
+  Template HTML para o card de produto de upsell do carrinho.
+  Usado pelo cart-upsell.js via o elemento <template id="cart-upsell-item-template">.
+  Os placeholders [[...]] são substituídos dinamicamente pelo JavaScript.
+
+  Placeholders disponíveis:
+  - [[productUrl]]       URL do produto
+  - [[productImageHtml]] HTML completo da imagem (img ou placeholder div)
+  - [[productTitle]]     Título do produto (já escaped)
+  - [[productPriceHtml]] HTML do preço (p.cart-upsell-price ou vazio)
+  - [[variantId]]        ID da variante para adicionar ao carrinho
+  - [[disabled]]         Atributo "disabled" se indisponível, vazio caso contrário
+{% enddoc %}
+<div class="cart-upsell-product">
+  <a href="[[productUrl]]" class="cart-upsell-product__link">
+    [[productImageHtml]]
+  </a>
+  <div class="cart-upsell-product__info">
+    <h4 class="cart-upsell-title-product">[[productTitle]]</h4>
+    [[productPriceHtml]]
+  </div>
+  <button
+    type="button"
+    class="cart-upsell-add-to-cart"
+    data-variant-id="[[variantId]]"
+    [[disabled]]
+  >
+    {{ 'products.product.add_to_cart' | t }}
+  </button>
+</div>
