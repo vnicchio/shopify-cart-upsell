@@ -52,12 +52,15 @@ class CartUpsell extends HTMLElement {
 
       if (this.cartProducts.length > 0) {
         await this.loadRecommendations();
-        this.renderRecommendations();
+        if (this.recommendationsData.length > 0) {
+          this.renderRecommendations();
+        } else {
+          this.renderEmpty();
+        }
       } else {
         this.renderEmpty();
       }
     } catch (error) {
-      console.error("Error to load cart:", error);
       this.renderError();
     }
   }
@@ -66,14 +69,12 @@ class CartUpsell extends HTMLElement {
     try {
 
     const firstProduct = this.cartProducts[0];
-    console.log(firstProduct);
     const response = await fetch(
       `/recommendations/products.json?product_id=${firstProduct.product_id}&limit=${this.recommendations}`,
     );
     const data = await response.json();
     this.recommendationsData = data.products;
     } catch (error) {
-      console.error("Error to load recommendations:", error);
       throw new Error("Error to load recommendations:", error);
     }
   }
@@ -88,6 +89,35 @@ class CartUpsell extends HTMLElement {
 
   renderRecommendations() {
     this.innerHTML = `<div class="cart-upsell-recommendations">${this.recommendationsData.map((product) => this.renderRecommendation(product)).join("")}</div>`;
+
+    this.querySelectorAll(".cart-upsell-add-to-cart").forEach((button) => {
+      button.addEventListener("click", () => this.addToCart(button));
+    });
+  }
+
+  async addToCart(button) {
+    const variantId = button.dataset.variantId;
+    if (!variantId) return;
+
+    button.disabled = true;
+    const originalLabel = button.textContent;
+    button.textContent = this.addedLabel;
+
+    try {
+      const response = await fetch("/cart/add.js", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: variantId, quantity: 1 }),
+      });
+
+      if (!response.ok) throw new Error("Failed to add to cart");
+
+      this.loadCart();
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
   }
 
   getProductImageUrl(product) {
