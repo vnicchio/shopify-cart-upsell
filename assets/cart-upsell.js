@@ -5,10 +5,13 @@ class CartUpsell extends HTMLElement {
     this.recommendations = parseInt(this.getAttribute("recommendations")) || 4;
     this.cartProducts = [];
     this.recommendationsData = [];
-    this.addToCartLabel = this.getAttribute("data-add-to-cart") || "Add to cart";
+    this.addToCartLabel =
+      this.getAttribute("data-add-to-cart") || "Add to cart";
     this.addedLabel = this.getAttribute("data-added") || "Added!";
-    this.emptyLabel = this.getAttribute("data-empty") || "No recommendations available";
-    this.errorLabel = this.getAttribute("data-error") || "Error loading recommendations";
+    this.emptyLabel =
+      this.getAttribute("data-empty") || "No recommendations available";
+    this.errorLabel =
+      this.getAttribute("data-error") || "Error loading recommendations";
 
     this.init();
   }
@@ -20,17 +23,36 @@ class CartUpsell extends HTMLElement {
       this.loadCart();
     }
 
-    this.addEventListener("click", (e) => this.handleAddToCart(e));
+    this.cartObserver();
+  }
+
+  cartObserver() {
+    window.addEventListener("load", () => {
+      const observer = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => {
+          if (entry.name.includes("/cart/add")) {
+            this.loadCart();
+          }
+          if (entry.name.includes("/cart/change")) {
+            this.loadCart();
+          }
+        });
+      });
+
+      observer.observe({ entryTypes: ["resource"] });
+    });
   }
 
   async loadCart() {
     try {
-      const response = await fetch("/cart.js");
-      const cart = await response.json();
+      const cart = await fetch("/cart.js");
+      const data = await cart.json();
+      this.cartProducts = [];
+      this.cartProducts = data.items;
 
-      if (cart && cart.items && cart.items.length > 0) {
-        this.cartProducts = cart.items.map((item) => item.product_id);
-        await this.fetchRecommendations();
+      if (this.cartProducts.length > 0) {
+        await this.loadRecommendations();
+        this.renderRecommendations();
       } else {
         this.renderEmpty();
       }
@@ -40,51 +62,32 @@ class CartUpsell extends HTMLElement {
     }
   }
 
-  async fetchRecommendations() {
+  async loadRecommendations() {
     try {
-      const firstProduct = this.cartProducts[0];
 
-      if (!firstProduct) {
-        this.renderEmpty();
-        return;
-      }
-
-      const response = await fetch(
-        `/recommendations/products.json?product_id=${firstProduct}&limit=${this.recommendations}`,
-      );
-      const data = await response.json();
-
-      if (data && data.products) {
-        this.recommendationsData = data.products;
-        this.renderRecommendations();
-      } else {
-        this.renderEmpty();
-      }
+    const firstProduct = this.cartProducts[0];
+    console.log(firstProduct);
+    const response = await fetch(
+      `/recommendations/products.json?product_id=${firstProduct.product_id}&limit=${this.recommendations}`,
+    );
+    const data = await response.json();
+    this.recommendationsData = data.products;
     } catch (error) {
-      console.error("Error to fetch recommendations:", error);
-      this.renderError();
+      console.error("Error to load recommendations:", error);
+      throw new Error("Error to load recommendations:", error);
     }
   }
 
+  renderEmpty() {
+    this.innerHTML = `<div class="cart-upsell-empty">${this.emptyLabel}</div>`;
+  }
+
+  renderError() {
+    this.innerHTML = `<div class="cart-upsell-error">${this.errorLabel}</div>`;
+  }
+
   renderRecommendations() {
-    const filteredRecommendations = this.recommendationsData.filter(
-      (product) => !this.cartProducts.includes(product.id),
-    );
-
-    if (filteredRecommendations.length === 0) {
-      this.renderEmpty();
-      return;
-    }
-
-    const html = `
-        <div class="cart-upsell-container">
-          <div class="cart-upsell-grid">
-            ${filteredRecommendations.map((product) => this.renderProductCard(product)).join("")}
-          </div>
-        </div>
-      `;
-
-    this.innerHTML = html;
+    this.innerHTML = `<div class="cart-upsell-recommendations">${this.recommendationsData.map((product) => this.renderRecommendation(product)).join("")}</div>`;
   }
 
   getProductImageUrl(product) {
@@ -100,7 +103,7 @@ class CartUpsell extends HTMLElement {
     return url;
   }
 
-  renderProductCard(product) {
+  renderRecommendation(product) {
     const imageUrl = this.getProductImageUrl(product);
     const price = product.price
       ? (product.price / 100).toLocaleString(undefined, { style: "currency", currency: "USD" })
@@ -134,90 +137,6 @@ class CartUpsell extends HTMLElement {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
-  }
-
-  renderEmpty() {
-    this.innerHTML = `<div class="cart-upsell-empty">${this.escapeHtml(this.emptyLabel)}</div>`;
-  }
-
-  renderError() {
-    this.innerHTML = `<div class="cart-upsell-error">${this.escapeHtml(this.errorLabel)}</div>`;
-  }
-
-  async handleAddToCart(event) {
-    const button = event.target.closest(".cart-upsell-add-to-cart");
-    if (!button) return;
-
-    const variantId = button.getAttribute("data-variant-id");
-
-    button.disabled = true;
-    button.textContent = "Adding...";
-
-    const cart = document.querySelector("cart-notification") || document.querySelector("cart-drawer");
-
-    if (cart && typeof cart.renderContents === "function" && typeof fetchConfig === "function" && window.routes?.cart_add_url) {
-      try {
-        cart.setActiveElement(button);
-        const formData = new FormData();
-        formData.append("id", variantId);
-        formData.append("quantity", "1");
-        if (typeof window.getCurrentSellingPlanId === "function") {
-          formData.append("selling_plan", window.getCurrentSellingPlanId() || "");
-        }
-        formData.append("sections", cart.getSectionsToRender().map((section) => section.id));
-        formData.append("sections_url", window.location.pathname);
-
-        const config = fetchConfig("javascript");
-        config.headers["X-Requested-With"] = "XMLHttpRequest";
-        delete config.headers["Content-Type"];
-        config.body = formData;
-
-        const response = await fetch(window.routes.cart_add_url, config);
-        const data = await response.json();
-
-        if (data.status) {
-          throw new Error(data.description || data.message || "Failed to add");
-        }
-
-        if (typeof publish === "function") {
-          publish(PUB_SUB_EVENTS.cartUpdate, { source: "cart-upsell", productVariantId: variantId });
-        }
-        cart.renderContents(data);
-        if (cart.classList.contains("is-empty")) cart.classList.remove("is-empty");
-
-        button.textContent = this.addedLabel;
-        setTimeout(() => this.loadCart(), 500);
-      } catch (error) {
-        console.error("Erro ao adicionar:", error);
-        button.textContent = this.errorLabel;
-        button.disabled = false;
-      }
-      return;
-    }
-
-    try {
-      const response = await fetch("/cart/add.js", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: [{ id: Number(variantId), quantity: 1 }],
-        }),
-      });
-
-      if (response.ok) {
-        button.textContent = this.addedLabel;
-        if (typeof publish === "function") {
-          publish(PUB_SUB_EVENTS.cartUpdate, { source: "cart-upsell", productVariantId: variantId });
-        }
-        setTimeout(() => this.loadCart(), 500);
-      } else {
-        throw new Error("Failed to add");
-      }
-    } catch (error) {
-      console.error("Erro ao adicionar:", error);
-      button.textContent = this.errorLabel;
-      button.disabled = false;
-    }
   }
 }
 
