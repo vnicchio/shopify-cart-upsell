@@ -20,7 +20,7 @@ class CartUpsell extends HTMLElement {
       this.loadCart();
     }
 
-    this.setupCartListeners();
+    this.addEventListener("click", (e) => this.handleAddToCart(e));
   }
 
   async loadCart() {
@@ -144,18 +144,80 @@ class CartUpsell extends HTMLElement {
     this.innerHTML = `<div class="cart-upsell-error">${this.escapeHtml(this.errorLabel)}</div>`;
   }
 
-  setupCartListeners() {
-    window.addEventListener('load', () => {
-      const observer = new PerformanceObserver((list) => {
-        list.getEntries().forEach(entry => {
-          if (entry.name.includes('/cart/add')) {
-            this.loadCart();
-          }
-        });
+  async handleAddToCart(event) {
+    const button = event.target.closest(".cart-upsell-add-to-cart");
+    if (!button) return;
+
+    const variantId = button.getAttribute("data-variant-id");
+
+    button.disabled = true;
+    button.textContent = "Adding...";
+
+    const cart = document.querySelector("cart-notification") || document.querySelector("cart-drawer");
+
+    if (cart && typeof cart.renderContents === "function" && typeof fetchConfig === "function" && window.routes?.cart_add_url) {
+      try {
+        cart.setActiveElement(button);
+        const formData = new FormData();
+        formData.append("id", variantId);
+        formData.append("quantity", "1");
+        if (typeof window.getCurrentSellingPlanId === "function") {
+          formData.append("selling_plan", window.getCurrentSellingPlanId() || "");
+        }
+        formData.append("sections", cart.getSectionsToRender().map((section) => section.id));
+        formData.append("sections_url", window.location.pathname);
+
+        const config = fetchConfig("javascript");
+        config.headers["X-Requested-With"] = "XMLHttpRequest";
+        delete config.headers["Content-Type"];
+        config.body = formData;
+
+        const response = await fetch(window.routes.cart_add_url, config);
+        const data = await response.json();
+
+        if (data.status) {
+          throw new Error(data.description || data.message || "Failed to add");
+        }
+
+        if (typeof publish === "function") {
+          publish(PUB_SUB_EVENTS.cartUpdate, { source: "cart-upsell", productVariantId: variantId });
+        }
+        cart.renderContents(data);
+        if (cart.classList.contains("is-empty")) cart.classList.remove("is-empty");
+
+        button.textContent = this.addedLabel;
+        setTimeout(() => this.loadCart(), 500);
+      } catch (error) {
+        console.error("Erro ao adicionar:", error);
+        button.textContent = this.errorLabel;
+        button.disabled = false;
+      }
+      return;
+    }
+
+    try {
+      const response = await fetch("/cart/add.js", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ id: Number(variantId), quantity: 1 }],
+        }),
       });
-  
-      observer.observe({entryTypes: ['resource']});
-    });
+
+      if (response.ok) {
+        button.textContent = this.addedLabel;
+        if (typeof publish === "function") {
+          publish(PUB_SUB_EVENTS.cartUpdate, { source: "cart-upsell", productVariantId: variantId });
+        }
+        setTimeout(() => this.loadCart(), 500);
+      } else {
+        throw new Error("Failed to add");
+      }
+    } catch (error) {
+      console.error("Erro ao adicionar:", error);
+      button.textContent = this.errorLabel;
+      button.disabled = false;
+    }
   }
 }
 
