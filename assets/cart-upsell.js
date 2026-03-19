@@ -89,10 +89,23 @@ class CartUpsell extends HTMLElement {
   }
 
   /**
+   * Renders skeleton placeholder cards while recommendations are loading.
+   * Mirrors the exact grid structure of the real cards to avoid layout shift.
+   */
+  renderLoading() {
+    this.innerHTML = `
+      <div class="cart-upsell-loading" role="status" aria-label="${this.getAttribute("data-loading") || "Loading"}">
+        <div class="cart-upsell-spinner"></div>
+      </div>
+    `;
+  }
+
+  /**
    * Fetches the current cart, then loads and renders recommendations.
    * Renders an empty or error state as appropriate.
    */
   async loadCart() {
+    this.renderLoading();
     try {
       const response = await fetch("/cart.js");
       if (!response.ok) throw new Error(`Cart fetch failed: ${response.status}`);
@@ -145,7 +158,7 @@ class CartUpsell extends HTMLElement {
   }
 
   renderRecommendations() {
-    this.innerHTML = `<div class="cart-upsell-recommendations">${this.recommendationsData
+    this.innerHTML = `<div class="cart-upsell-grid">${this.recommendationsData
       .map((product) => this.renderRecommendation(product))
       .join("")}</div>`;
 

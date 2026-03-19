@@ -75,7 +75,7 @@
 }
 
 .cart-upsell-title-product {
-  font-size: 0.8125rem;
+  font-size: 1.25rem;
   font-weight: 500;
   margin: 0 0 0.25rem;
   color: var(--cart-upsell-price-color);
@@ -87,7 +87,7 @@
 }
 
 .cart-upsell-price {
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--cart-upsell-price-color);
   margin: 0;
@@ -96,7 +96,7 @@
 .cart-upsell-add-to-cart {
   flex-shrink: 0;
   padding: 0.5rem 0.75rem;
-  font-size: 0.8125rem;
+  font-size: 1.25rem;
   font-weight: 500;
   border: none;
   border-radius: 6px;
@@ -114,6 +114,27 @@
 .cart-upsell-add-to-cart:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Spinner loader */
+@keyframes cart-upsell-spin {
+  to { transform: rotate(360deg); }
+}
+
+.cart-upsell-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 0;
+}
+
+.cart-upsell-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--cart-upsell-border);
+  border-top-color: var(--cart-upsell-btn-bg);
+  border-radius: 50%;
+  animation: cart-upsell-spin 0.7s linear infinite;
 }
 
 .cart-upsell-empty,
@@ -149,4 +170,5 @@
   .cart-upsell-section .cart-upsell-title {
     font-size: 1rem;
   }
+
 }
